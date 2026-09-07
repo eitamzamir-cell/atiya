@@ -11,16 +11,23 @@ const KEY = 'levels';
 let LAST_ERROR = null;
 function lastError() { return LAST_ERROR; }
 
+/**
+ * נטליפיי אמור להזריק את פרטי האחסון אוטומטית, וזה לא תמיד קורה.
+ * לכן: אם יש בסביבה siteID ואסימון — משתמשים בהם במפורש.
+ */
 async function store() {
   try {
     const mod = await import('@netlify/blobs');
-    if (typeof mod.getStore !== 'function') {
-      LAST_ERROR = 'החבילה נטענה אך getStore חסר';
-      throw new Error(LAST_ERROR);
-    }
-    return mod.getStore(STORE);
+    if (typeof mod.getStore !== 'function') throw new Error('getStore חסר בחבילה');
+
+    const siteID = process.env.SITE_ID || process.env.NETLIFY_SITE_ID;
+    const token  = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_BLOBS_TOKEN
+                || process.env.NETLIFY_AUTH_TOKEN;
+
+    if (siteID && token) return mod.getStore({ name: STORE, siteID, token });
+    return mod.getStore(STORE);            // ההקשר האוטומטי, כשהוא קיים
   } catch (e) {
-    LAST_ERROR = (e && (e.code ? e.code + ': ' : '') + (e.message || String(e))) || 'unknown';
+    LAST_ERROR = (e && ((e.code ? e.code + ': ' : '') + (e.message || String(e)))) || 'unknown';
     throw e;
   }
 }
