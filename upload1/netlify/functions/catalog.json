@@ -1,0 +1,134 @@
+{
+  "ester": {
+    "name": "אסתר",
+    "cat": "models",
+    "stock": 12,
+    "price": 179
+  },
+  "hagar": {
+    "name": "הגר",
+    "cat": "models",
+    "stock": 55,
+    "price": 149
+  },
+  "emanuel-cream": {
+    "name": "עמנואל שמנת",
+    "cat": "models",
+    "stock": 39,
+    "price": 169
+  },
+  "emanuel-clay": {
+    "name": "עמנואל חמרה",
+    "cat": "models",
+    "stock": 38,
+    "price": 169
+  },
+  "yehudit": {
+    "name": "יהודית",
+    "cat": "models",
+    "stock": 3,
+    "price": 169
+  },
+  "ktura-sq": {
+    "name": "קטורה · ריבוע",
+    "cat": "models",
+    "stock": 48,
+    "price": 119
+  },
+  "ktura-long": {
+    "name": "קטורה · לונג",
+    "cat": "models",
+    "stock": 23,
+    "price": 139
+  },
+  "naomi": {
+    "name": "נעמי",
+    "cat": "models",
+    "stock": 37,
+    "price": 99
+  },
+  "avigail": {
+    "name": "אביגיל",
+    "cat": "models",
+    "stock": 44,
+    "price": 99
+  },
+  "dvora": {
+    "name": "דבורה",
+    "cat": "models",
+    "stock": 46,
+    "price": 189
+  },
+  "rut": {
+    "name": "רות",
+    "cat": "models",
+    "stock": 39,
+    "price": 169
+  },
+  "shoshana": {
+    "name": "שושנה",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 119
+  },
+  "lea": {
+    "name": "לאה",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 139
+  },
+  "rivka": {
+    "name": "רבקה",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 129
+  },
+  "sara": {
+    "name": "שרה",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 119
+  },
+  "erga": {
+    "name": "ערגה",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 239
+  },
+  "aderet": {
+    "name": "אדרת",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 229
+  },
+  "noam": {
+    "name": "נועם",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 99
+  },
+  "halinda": {
+    "name": "הלינדה",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 289
+  },
+  "ktzia": {
+    "name": "קציעה",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 79
+  },
+  "holga": {
+    "name": "חולגה",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 229
+  },
+  "shifra": {
+    "name": "שפרה",
+    "cat": "onepiece",
+    "stock": 1,
+    "price": 259
+  }
+}

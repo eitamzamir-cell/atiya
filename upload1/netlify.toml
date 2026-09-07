@@ -1,0 +1,25 @@
+# ── עטיה ──────────────────────────────────────────────────────────────────
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["netlify/functions/catalog.json"]
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# התמונות לא משתנות — נותנים לדפדפן לשמור אותן לשנה
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/stock.html"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"

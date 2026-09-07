@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>מלאי · עטיה</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<style>
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --ink:#3a2c1b; --dim:#6b5b45; --cream:#e8ddc6; --paper:#f6efe1;
+    --line:rgba(122,92,56,.22); --forest:#3a4a32; --alert:#a8442e;
+  }
+  body{
+    background:var(--cream); color:var(--ink); padding:1.5rem 1rem 4rem;
+    font-family:'Frank Ruhl Libre','David Libre','Times New Roman',serif;
+    font-size:16px; line-height:1.6;
+  }
+  .wrap{max-width:940px;margin:0 auto}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.4rem}
+  h1{font-size:1.9rem;font-weight:400;letter-spacing:.02em}
+  .sub{color:var(--dim);font-size:.93rem;margin-bottom:1.6rem}
+
+  .gate{max-width:380px;margin:14vh auto;text-align:center}
+  .gate h1{margin-bottom:.4rem}
+  .gate p{color:var(--dim);font-size:.92rem;margin-bottom:1.4rem}
+  input,button{font-family:inherit;font-size:1rem}
+  .field{
+    width:100%;padding:.8rem .9rem;background:#fff;
+    border:1px solid var(--line);border-radius:3px;color:var(--ink);text-align:center;
+  }
+  .field:focus{outline:none;border-color:var(--forest)}
+  .btn{
+    background:var(--forest);color:var(--paper);border:none;border-radius:3px;
+    padding:.75rem 1.5rem;cursor:pointer;transition:opacity .2s;
+  }
+  .btn:hover{opacity:.87} .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn-ghost{background:none;color:var(--dim);border:1px solid var(--line)}
+  .gate .btn{width:100%;margin-top:.8rem}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem;margin-bottom:1.6rem}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:.85rem 1rem}
+  .stat .k{font-size:.78rem;color:var(--dim);letter-spacing:.06em}
+  .stat .v{font-size:1.5rem;line-height:1.25}
+
+  table{width:100%;border-collapse:collapse;background:var(--paper);
+        border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  th,td{padding:.62rem .8rem;text-align:right;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{background:var(--ink);color:var(--paper);font-weight:400;font-size:.84rem;letter-spacing:.05em;position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr.grp td{background:rgba(122,92,56,.09);font-size:.82rem;letter-spacing:.08em;color:var(--dim)}
+  .name{font-size:1.02rem}
+  .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .qty{width:74px;padding:.4rem;text-align:center;border:1px solid var(--line);border-radius:3px;
+       background:#fff;font-variant-numeric:tabular-nums;font-size:1rem}
+  .qty:focus{outline:none;border-color:var(--forest)}
+  .qty.changed{border-color:var(--forest);background:#f0f5ea;font-weight:700}
+  .step{width:30px;height:30px;border:1px solid var(--line);background:#fff;border-radius:3px;
+        cursor:pointer;color:var(--dim);font-size:1.05rem;line-height:1}
+  .step:hover{border-color:var(--forest);color:var(--ink)}
+  .cell{display:flex;align-items:center;gap:.3rem;justify-content:flex-end}
+  .pill{font-size:.76rem;padding:.15rem .5rem;border-radius:99px;white-space:nowrap}
+  .low{background:rgba(168,68,46,.13);color:var(--alert)}
+  .out{background:var(--alert);color:#fff}
+
+  .bar{
+    position:sticky;bottom:0;margin-top:1.2rem;padding:.9rem 1rem;
+    background:var(--paper);border:1px solid var(--line);border-radius:3px;
+    display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+    box-shadow:0 -6px 18px rgba(58,44,27,.10);
+  }
+  .msg{font-size:.9rem;color:var(--dim)}
+  .msg.ok{color:var(--forest)} .msg.err{color:var(--alert)}
+  .hide{display:none!important}
+  @media(max-width:620px){
+    th:nth-child(3),td:nth-child(3),th:nth-child(5),td:nth-child(5){display:none}
+    body{padding:1rem .6rem 4rem} h1{font-size:1.5rem}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap gate" id="gate">
+  <h1>מלאי עטיה</h1>
+  <p>הזיני את סיסמת הניהול</p>
+  <input class="field" id="key" type="password" autocomplete="current-password" placeholder="סיסמה">
+  <button class="btn" id="enter">כניסה</button>
+  <p class="msg err hide" id="gateMsg" style="margin-top:.9rem"></p>
+</div>
+
+<div class="wrap hide" id="app">
+  <header>
+    <h1>מלאי עטיה</h1>
+    <button class="btn btn-ghost" id="reload">רענון</button>
+  </header>
+  <p class="sub" id="stamp"></p>
+
+  <div class="cards" id="stats"></div>
+
+  <table>
+    <thead>
+      <tr><th>פריט</th><th>מלאי</th><th>מחיר</th><th>סטטוס</th><th>שווי</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div class="bar">
+    <span class="msg" id="msg">אפשר לערוך את המספרים ואז לשמור.</span>
+    <span style="display:flex;gap:.5rem">
+      <button class="btn btn-ghost" id="undo">ביטול שינויים</button>
+      <button class="btn" id="save" disabled>שמירה</button>
+    </span>
+  </div>
+</div>
+
+<script>
+(function(){
+  var API = '/.netlify/functions/stock-admin';
+  var $ = function(s){ return document.querySelector(s); };
+  var KEY = '', DATA = [], ORIG = {};
+
+  function money(n){ return n.toLocaleString('he-IL') + ' ₪'; }
+  function stash(k){ try{ sessionStorage.setItem('atya-key', k); }catch(e){} }
+  function recall(){ try{ return sessionStorage.getItem('atya-key') || ''; }catch(e){ return ''; } }
+
+  function load(k){
+    return fetch(API + '?key=' + encodeURIComponent(k))
+      .then(function(r){ return r.json().then(function(j){ j._s = r.status; return j; }); });
+  }
+
+  function enter(k){
+    $('#gateMsg').classList.add('hide');
+    load(k).then(function(d){
+      if (d._s === 401) { $('#gateMsg').textContent = 'סיסמה שגויה'; $('#gateMsg').classList.remove('hide'); return; }
+      if (d._s === 503) { $('#gateMsg').textContent = d.message || 'הניהול לא מוגדר'; $('#gateMsg').classList.remove('hide'); return; }
+      if (!d.products) { $('#gateMsg').textContent = 'שגיאה בטעינה'; $('#gateMsg').classList.remove('hide'); return; }
+      KEY = k; stash(k);
+      $('#gate').classList.add('hide'); $('#app').classList.remove('hide');
+      render(d.products);
+    }).catch(function(){
+      $('#gateMsg').textContent = 'אין חיבור לשרת'; $('#gateMsg').classList.remove('hide');
+    });
+  }
+
+  function render(list){
+    DATA = list; ORIG = {};
+    list.forEach(function(p){ ORIG[p.id] = p.stock; });
+
+    var groups = [['models','דגמים'],['onepiece','ONE PIECE · פריט יחיד']];
+    var html = '';
+    groups.forEach(function(g){
+      var items = list.filter(function(p){ return p.cat === g[0]; });
+      if (!items.length) return;
+      html += '<tr class="grp"><td colspan="5">' + g[1] + '</td></tr>';
+      items.forEach(function(p){
+        html += '<tr data-id="' + p.id + '">' +
+          '<td class="name">' + p.name + '</td>' +
+          '<td><span class="cell">' +
+            '<button class="step" data-d="-1">−</button>' +
+            '<input class="qty" type="number" min="0" max="9999" value="' + p.stock + '">' +
+            '<button class="step" data-d="1">+</button>' +
+          '</span></td>' +
+          '<td class="num">' + (p.price == null ? '—' : money(p.price)) + '</td>' +
+          '<td class="status"></td>' +
+          '<td class="num value"></td>' +
+        '</tr>';
+      });
+    });
+    $('#rows').innerHTML = html;
+    $('#stamp').textContent = 'עודכן ' + new Date().toLocaleString('he-IL');
+    refresh();
+  }
+
+  function rowsData(){
+    return [].map.call(document.querySelectorAll('#rows tr[data-id]'), function(tr){
+      var id = tr.dataset.id, p = DATA.filter(function(x){ return x.id === id; })[0];
+      return { tr: tr, p: p, n: Math.max(0, parseInt(tr.querySelector('.qty').value, 10) || 0) };
+    });
+  }
+
+  function refresh(){
+    var units = 0, value = 0, low = 0, out = 0, dirty = 0;
+    rowsData().forEach(function(r){
+      var st = r.tr.querySelector('.status'), vl = r.tr.querySelector('.value'),
+          q  = r.tr.querySelector('.qty');
+      st.innerHTML = r.n === 0 ? '<span class="pill out">אזל</span>'
+                   : (r.n <= 3 && r.p.cat !== 'onepiece')
+                     ? '<span class="pill low">נותרו ' + r.n + '</span>' : '';
+      vl.textContent = r.p.price == null ? '—' : money(r.n * r.p.price);
+      var changed = r.n !== ORIG[r.p.id];
+      q.classList.toggle('changed', changed);
+      if (changed) dirty++;
+      units += r.n;
+      if (r.p.price != null) value += r.n * r.p.price;
+      if (r.n === 0) out++; else if (r.n <= 3 && r.p.cat !== 'onepiece') low++;
+    });
+    $('#stats').innerHTML =
+      stat('יחידות במלאי', units.toLocaleString('he-IL')) +
+      stat('שווי מלאי', money(value)) +
+      stat('מלאי נמוך', low) +
+      stat('אזלו', out);
+    $('#save').disabled = dirty === 0;
+    $('#msg').className = 'msg';
+    $('#msg').textContent = dirty ? dirty + ' פריטים שונו — לא נשמר עדיין' : 'אפשר לערוך את המספרים ואז לשמור.';
+  }
+  function stat(k,v){ return '<div class="stat"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+
+  document.addEventListener('input', function(e){ if (e.target.classList.contains('qty')) refresh(); });
+  document.addEventListener('click', function(e){
+    var s = e.target.closest && e.target.closest('.step');
+    if (s){
+      var q = s.parentNode.querySelector('.qty');
+      q.value = Math.max(0, (parseInt(q.value,10)||0) + (+s.dataset.d));
+      refresh(); return;
+    }
+    if (e.target.id === 'enter'){ enter($('#key').value.trim()); return; }
+    if (e.target.id === 'reload'){ load(KEY).then(function(d){ if (d.products) render(d.products); }); return; }
+    if (e.target.id === 'undo'){ render(DATA.map(function(p){ return Object.assign({}, p, {stock: ORIG[p.id]}); })); return; }
+    if (e.target.id === 'save'){
+      var payload = {};
+      rowsData().forEach(function(r){ payload[r.p.id] = r.n; });
+      e.target.disabled = true; $('#msg').textContent = 'שומר…'; $('#msg').className = 'msg';
+      fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
+                   body: JSON.stringify({ key: KEY, levels: payload }) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d.ok) throw 0;
+          DATA.forEach(function(p){ p.stock = d.levels[p.id]; ORIG[p.id] = d.levels[p.id]; });
+          $('#msg').className = 'msg ok';
+          $('#msg').textContent = d.persisted
+            ? 'נשמר ✓ ' + d.changes.length + ' שינויים'
+            : 'עודכן, אך האחסון לא זמין — ייתכן שיתאפס';
+          $('#stamp').textContent = 'עודכן ' + new Date().toLocaleString('he-IL');
+          refresh();
+          $('#msg').className = 'msg ok';
+          $('#msg').textContent = d.persisted
+            ? 'נשמר ✓  (' + d.changes.length + ' שינויים)'
+            : 'עודכן, אך האחסון לא זמין — ייתכן שיתאפס';
+        })
+        .catch(function(){
+          refresh();
+          $('#msg').className = 'msg err'; $('#msg').textContent = 'השמירה נכשלה';
+        });
+    }
+  });
+  $('#key').addEventListener('keydown', function(e){ if (e.key === 'Enter') enter($('#key').value.trim()); });
+
+  var saved = recall();
+  if (saved) enter(saved);
+})();
+</script>
+</body>
+</html>

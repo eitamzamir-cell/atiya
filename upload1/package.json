@@ -1,0 +1,9 @@
+{
+  "name": "atya-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "עטיה — מטפחות ראש ומפות וינטג׳",
+  "dependencies": {
+    "@netlify/blobs": ">=7"
+  }
+}
