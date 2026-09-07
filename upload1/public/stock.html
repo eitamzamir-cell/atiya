@@ -233,10 +233,18 @@
             : 'עודכן, אך האחסון לא זמין — ייתכן שיתאפס';
           $('#stamp').textContent = 'עודכן ' + new Date().toLocaleString('he-IL');
           refresh();
-          $('#msg').className = 'msg ok';
-          $('#msg').textContent = d.persisted
-            ? 'נשמר ✓  (' + d.changes.length + ' שינויים)'
-            : 'עודכן, אך האחסון לא זמין — ייתכן שיתאפס';
+          if (d.persisted) {
+            $('#msg').className = 'msg ok';
+            $('#msg').textContent = 'נשמר ✓  (' + d.changes.length + ' שינויים)';
+          } else {
+            $('#msg').className = 'msg err';
+            var g = d.diag || {};
+            $('#msg').textContent = 'האחסון לא זמין — ' +
+              (g.error || 'סיבה לא ידועה') +
+              '  ·  node ' + (g.node || '?') +
+              '  ·  context: ' + (g.hasBlobsContext ? 'קיים' : 'חסר') +
+              '  ·  siteId: ' + (g.siteId || '?');
+          }
         })
         .catch(function(){
           refresh();

@@ -8,9 +8,21 @@ const catalog = require('./catalog.json');
 const STORE = 'atya-stock';
 const KEY = 'levels';
 
+let LAST_ERROR = null;
+function lastError() { return LAST_ERROR; }
+
 async function store() {
-  const { getStore } = await import('@netlify/blobs');
-  return getStore(STORE);
+  try {
+    const mod = await import('@netlify/blobs');
+    if (typeof mod.getStore !== 'function') {
+      LAST_ERROR = 'החבילה נטענה אך getStore חסר';
+      throw new Error(LAST_ERROR);
+    }
+    return mod.getStore(STORE);
+  } catch (e) {
+    LAST_ERROR = (e && (e.code ? e.code + ': ' : '') + (e.message || String(e))) || 'unknown';
+    throw e;
+  }
 }
 
 /** מחזיר את מפת המלאי הנוכחית ({id: qty}) */
@@ -26,7 +38,9 @@ async function levels() {
       }
       return out;
     }
-  } catch (_) { /* אחסון לא זמין — נופלים למלאי מהקטלוג */ }
+  } catch (e) {
+    if (!LAST_ERROR) LAST_ERROR = (e && e.message) || String(e);
+  }
   return Object.fromEntries(Object.entries(catalog).map(([id, p]) => [id, p.stock]));
 }
 
@@ -34,8 +48,12 @@ async function save(map) {
   try {
     const s = await store();
     await s.setJSON(KEY, map);
+    LAST_ERROR = null;
     return true;
-  } catch (_) { return false; }
+  } catch (e) {
+    if (!LAST_ERROR) LAST_ERROR = (e && (e.code ? e.code + ': ' : '') + (e.message || String(e)));
+    return false;
+  }
 }
 
 /**
@@ -64,4 +82,4 @@ async function release(items) {
   return map;
 }
 
-module.exports = { catalog, levels, save, reserve, release };
+module.exports = { catalog, levels, save, reserve, release, lastError };

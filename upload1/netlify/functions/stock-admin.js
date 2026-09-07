@@ -7,7 +7,7 @@
  * הסיסמה נשמרת במשתנה סביבה ATYA_ADMIN_KEY בנטליפיי.
  * בלי משתנה כזה — הפונקציה מסרבת לכל בקשה (fail closed).
  */
-const { catalog, levels, save } = require('./_stock');
+const { catalog, levels, save, lastError } = require('./_stock');
 
 const json = (code, body) => ({
   statusCode: code,
@@ -56,7 +56,15 @@ exports.handler = async (event) => {
       map[id] = n;
     }
     const persisted = await save(map);
-    return json(200, { ok: true, persisted, changes, levels: map });
+    return json(200, {
+      ok: true, persisted, changes, levels: map,
+      diag: persisted ? null : {
+        error: lastError(),
+        node: process.version,
+        hasBlobsContext: !!(process.env.NETLIFY_BLOBS_CONTEXT || process.env.NETLIFY_PURGE_API_TOKEN),
+        siteId: process.env.SITE_ID ? 'קיים' : 'חסר',
+      },
+    });
   }
 
   return json(405, { error: 'method_not_allowed' });
