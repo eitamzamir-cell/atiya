@@ -7,7 +7,8 @@
  * הסיסמה נשמרת במשתנה סביבה ATYA_ADMIN_KEY בנטליפיי.
  * בלי משתנה כזה — הפונקציה מסרבת לכל בקשה (fail closed).
  */
-const { catalog, levels, save, lastError, salesSummary } = require('./_stock');
+const { catalog, levels, save, lastError, salesSummary,
+        recordSale, deleteSale, reserve } = require('./_stock');
 
 const json = (code, body) => ({
   statusCode: code,
@@ -48,6 +49,56 @@ exports.handler = async (event) => {
         revenue: sum.revenue, shipping: sum.shipping, recent: sum.recent,
       },
     });
+  }
+
+  /* ── רישום מכירה ידנית (מכירות עבר, וואטסאפ, שוק) ── */
+  if (event.httpMethod === 'POST' && body.op === 'addSale') {
+    const src = body.sale || {};
+    const rows = Array.isArray(src.items) ? src.items : [];
+    if (!rows.length) return json(400, { error: 'no_items' });
+
+    const items = [];
+    let subtotal = 0;
+    for (const r of rows) {
+      const p = catalog[r && r.id];
+      const qty = Math.floor(Number(r && r.qty));
+      if (!p) return json(400, { error: 'unknown_item', id: r && r.id });
+      if (!Number.isFinite(qty) || qty < 1 || qty > 999) return json(400, { error: 'bad_qty' });
+      const price = Number.isFinite(Number(r.price)) && Number(r.price) >= 0
+        ? Number(r.price) : (p.price || 0);     // אפשר לדרוס מחיר — הנחה, מכירת שוק
+      subtotal += price * qty;
+      items.push({ id: r.id, name: p.name, qty, price });
+    }
+
+    const shipping = Math.max(0, Number(src.shipping) || 0);
+    const total = Number.isFinite(Number(src.total)) && Number(src.total) > 0
+      ? Number(src.total) : subtotal + shipping;
+
+    let at = new Date().toISOString();
+    if (src.at) { const d = new Date(src.at); if (!isNaN(d)) at = d.toISOString(); }
+
+    const sale = {
+      manual: true,
+      orderId: (src.orderId || 'ידני').slice(0, 24),
+      at, items, subtotal, shipping, total,
+      delivery: (src.delivery || 'לא צוין').slice(0, 40),
+      customer: (src.customer || '').slice(0, 40),
+      note: (src.note || '').slice(0, 120),
+    };
+
+    const saved = await recordSale(sale);
+    let stock = null;
+    if (src.reduceStock) stock = await reserve(items.map(i => ({ id: i.id, qty: i.qty })));
+
+    return json(200, { ok: true, persisted: saved, sale, stock,
+                       diag: saved ? null : { error: lastError() } });
+  }
+
+  /* ── מחיקת רישום ── */
+  if (event.httpMethod === 'POST' && body.op === 'deleteSale') {
+    if (!body.sid) return json(400, { error: 'no_sid' });
+    const r = await deleteSale(String(body.sid));
+    return json(r.ok ? 200 : 400, r);
   }
 
   if (event.httpMethod === 'POST') {

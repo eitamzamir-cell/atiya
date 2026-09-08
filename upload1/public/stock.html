@@ -64,6 +64,23 @@
   .low{background:rgba(168,68,46,.13);color:var(--alert)}
   .out{background:var(--alert);color:#fff}
 
+  .manual{margin:1.2rem 0}
+  .manual .note{margin:.7rem 0}
+  #manualForm{border:1px solid var(--line);border-radius:3px;padding:1rem;background:var(--paper);margin-top:.6rem}
+  .mline{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem}
+  .mline select{flex:1;min-width:0}
+  .mline input{width:70px}
+  .mrow{display:flex;gap:.8rem;margin:.7rem 0}
+  .mrow label{flex:1;display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;color:var(--dim)}
+  .field.small{padding:.45rem .55rem;font-size:.93rem;text-align:right}
+  .btn.small{padding:.35rem .8rem;font-size:.85rem}
+  .mcheck{display:flex;gap:.5rem;align-items:flex-start;font-size:.87rem;color:var(--dim);margin:.6rem 0}
+  .mcheck em{font-style:normal;opacity:.75}
+  .mfoot{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-top:.8rem}
+  .mtotal{font-family:var(--display,inherit);font-size:1.25rem}
+  .del{background:none;border:none;color:var(--alert);cursor:pointer;font-size:1.2rem;line-height:1;padding:0 .3rem}
+  .del:hover{opacity:.7}
+  .rm{background:none;border:1px solid var(--line);border-radius:3px;cursor:pointer;color:var(--dim);width:28px;height:28px}
   .shead{font-size:1.35rem;font-weight:400;margin:2.2rem 0 .3rem}
   .note{font-size:.86rem;color:var(--dim);margin-bottom:1rem;line-height:1.6}
   #recentTbl td{font-size:.9rem}
@@ -84,6 +101,7 @@
   @media(max-width:620px){
     th:nth-child(5),td:nth-child(5),th:nth-child(7),td:nth-child(7){display:none}
     #recentTbl th:nth-child(2),#recentTbl td:nth-child(2),#recentTbl th:nth-child(4),#recentTbl td:nth-child(4){display:none}
+    .mrow{flex-direction:column;gap:.5rem}
     body{padding:1rem .6rem 4rem} h1{font-size:1.5rem}
   }
 </style>
@@ -118,8 +136,40 @@
     <h2 class="shead">מכירות</h2>
     <p class="note" id="salesNote"></p>
     <div class="cards" id="salesStats"></div>
+
+    <div class="manual">
+      <button class="btn btn-ghost" id="manualToggle">+ רישום מכירה ידנית</button>
+      <div id="manualForm" class="hide">
+        <p class="note">למכירות שלא עברו באתר — וואטסאפ, שוק, או מכירות עבר.</p>
+        <div id="mLines"></div>
+        <button class="btn btn-ghost small" id="mAddLine">+ פריט נוסף</button>
+        <div class="mrow">
+          <label>לקוחה<input class="field small" id="mCustomer" placeholder="שם (לא חובה)"></label>
+          <label>תאריך<input class="field small" id="mDate" type="date"></label>
+        </div>
+        <div class="mrow">
+          <label>מסירה
+            <select class="field small" id="mDelivery">
+              <option>מכירה ישירה</option><option>איסוף עצמי · סנסנה</option>
+              <option>איסוף עצמי · תקוע</option><option>משלוח</option>
+            </select>
+          </label>
+          <label>דמי משלוח<input class="field small" id="mShipping" type="number" min="0" value="0"></label>
+        </div>
+        <label class="mcheck"><input type="checkbox" id="mReduce" checked>
+          <span>להוריד גם מהמלאי <em>(כבו אם כבר עדכנתם את המלאי ידנית)</em></span></label>
+        <div class="mfoot">
+          <span id="mTotal" class="mtotal"></span>
+          <span>
+            <button class="btn btn-ghost" id="mCancel">ביטול</button>
+            <button class="btn" id="mSave">רישום</button>
+          </span>
+        </div>
+        <p class="msg err hide" id="mMsg"></p>
+      </div>
+    </div>
     <table id="recentTbl">
-      <thead><tr><th>הזמנה</th><th>מתי</th><th>לקוחה</th><th>פריטים</th><th>מסירה</th><th>סכום</th></tr></thead>
+      <thead><tr><th>הזמנה</th><th>מתי</th><th>לקוחה</th><th>פריטים</th><th>מסירה</th><th>סכום</th><th></th></tr></thead>
       <tbody id="recent"></tbody>
     </table>
   </div>
@@ -226,6 +276,52 @@
     $('#msg').className = 'msg';
     $('#msg').textContent = dirty ? dirty + ' פריטים שונו — לא נשמר עדיין' : 'אפשר לערוך את המספרים ואז לשמור.';
   }
+
+  /* ── רישום מכירה ידנית ── */
+  function mOptions(){
+    return DATA.map(function(p){
+      return '<option value="'+p.id+'" data-price="'+(p.price||0)+'">'+p.name+
+             (p.price!=null?' — '+money(p.price):'')+'</option>';
+    }).join('');
+  }
+  function mAddLine(){
+    var d = document.createElement('div');
+    d.className = 'mline';
+    d.innerHTML = '<select class="field small mItem">'+mOptions()+'</select>'+
+                  '<input class="field small mQty" type="number" min="1" value="1">'+
+                  '<button class="rm" title="הסרה">&times;</button>';
+    $('#mLines').appendChild(d);
+    mTotal();
+  }
+  function mLines(){
+    return [].map.call(document.querySelectorAll('#mLines .mline'), function(l){
+      var sel = l.querySelector('.mItem');
+      return { id: sel.value,
+               price: +sel.selectedOptions[0].dataset.price || 0,
+               qty: Math.max(1, parseInt(l.querySelector('.mQty').value,10) || 1) };
+    });
+  }
+  function mTotal(){
+    var t = mLines().reduce(function(s,l){ return s + l.price*l.qty; }, 0)
+          + (parseFloat($('#mShipping').value) || 0);
+    $('#mTotal').textContent = 'סה"כ ' + money(t);
+    return t;
+  }
+  function mOpen(open){
+    $('#manualForm').classList.toggle('hide', !open);
+    $('#manualToggle').textContent = open ? '− סגירת הטופס' : '+ רישום מכירה ידנית';
+    if (open && !document.querySelector('#mLines .mline')) {
+      $('#mDate').value = new Date().toISOString().slice(0,10);
+      mAddLine();
+    }
+  }
+  document.addEventListener('input', function(e){
+    if (e.target.closest && (e.target.closest('#mLines') || e.target.id === 'mShipping')) mTotal();
+  });
+  document.addEventListener('change', function(e){
+    if (e.target.closest && e.target.closest('#mLines')) mTotal();
+  });
+
   function renderSales(){
     var box = $('#salesBox');
     if (!SALES) { box.classList.add('hide'); return; }
@@ -244,9 +340,10 @@
           var d = r.at ? new Date(r.at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
           return '<tr><td>' + (r.orderId||'—') + '</td><td>' + d + '</td><td>' + (r.customer||'—') +
                  '</td><td>' + (r.items||'—') + '</td><td>' + (r.delivery||'—') +
-                 '</td><td class="num">' + money(r.total||0) + '</td></tr>';
+                 '</td><td class="num">' + money(r.total||0) + '</td>' +
+                 '<td>' + (r.manual ? '<button class="del" data-sid="'+r.sid+'" title="מחיקת רישום">&times;</button>' : '') + '</td></tr>';
         }).join('')
-      : '<tr><td colspan="6" style="color:var(--dim)">אין עדיין הזמנות</td></tr>';
+      : '<tr><td colspan="7" style="color:var(--dim)">אין עדיין הזמנות</td></tr>';
   }
 
   function stat(k,v){ return '<div class="stat"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
@@ -258,6 +355,45 @@
       var q = s.parentNode.querySelector('.qty');
       q.value = Math.max(0, (parseInt(q.value,10)||0) + (+s.dataset.d));
       refresh(); return;
+    }
+
+    if (e.target.id === 'manualToggle'){ mOpen($('#manualForm').classList.contains('hide')); return; }
+    if (e.target.id === 'mAddLine'){ mAddLine(); return; }
+    if (e.target.id === 'mCancel'){ $('#mLines').innerHTML=''; mOpen(false); return; }
+    if (e.target.classList.contains('rm')){
+      var all = document.querySelectorAll('#mLines .mline');
+      if (all.length > 1) e.target.parentNode.remove(); 
+      mTotal(); return;
+    }
+    if (e.target.id === 'mSave'){
+      var lines = mLines();
+      if (!lines.length) return;
+      e.target.disabled = true; $('#mMsg').classList.add('hide');
+      fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ key: KEY, op: 'addSale', sale: {
+          items: lines, shipping: parseFloat($('#mShipping').value) || 0,
+          customer: $('#mCustomer').value, delivery: $('#mDelivery').value,
+          at: $('#mDate').value ? new Date($('#mDate').value).toISOString() : null,
+          reduceStock: $('#mReduce').checked,
+        }}) })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if (!d.ok) throw 0;
+          $('#mLines').innerHTML=''; $('#mCustomer').value=''; $('#mShipping').value='0';
+          mOpen(false);
+          return load(KEY).then(function(x){ if (x.products){ SALES=x.sales; render(x.products); renderSales(); } });
+        })
+        .catch(function(){ $('#mMsg').textContent='הרישום נכשל'; $('#mMsg').classList.remove('hide'); })
+        .finally(function(){ e.target.disabled = false; });
+      return;
+    }
+    if (e.target.classList.contains('del')){
+      if (!confirm('למחוק את הרישום? המלאי לא יושפע.')) return;
+      fetch(API, { method:'POST', headers:{'Content-Type':'application/json'},
+                   body: JSON.stringify({ key: KEY, op:'deleteSale', sid: e.target.dataset.sid }) })
+        .then(function(){ return load(KEY); })
+        .then(function(x){ if (x.products){ SALES=x.sales; render(x.products); renderSales(); } });
+      return;
     }
     if (e.target.id === 'enter'){ enter($('#key').value.trim()); return; }
     if (e.target.id === 'reload'){ load(KEY).then(function(d){ if (d.products) { SALES = d.sales; render(d.products); renderSales(); } }); return; }

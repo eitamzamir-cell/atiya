@@ -112,12 +112,27 @@ async function recordSale(sale) {
   try {
     const st = await store();
     const list = await sales();
+    if (!sale.sid) sale.sid = 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     list.push(sale);
     await st.setJSON(SALES_KEY, list.slice(-SALES_CAP));
     return true;
   } catch (e) {
     if (!LAST_ERROR) LAST_ERROR = (e && e.message) || String(e);
     return false;
+  }
+}
+
+async function deleteSale(sid) {
+  try {
+    const st = await store();
+    const list = await sales();
+    const next = list.filter(x => x.sid !== sid);
+    if (next.length === list.length) return { ok: false, reason: 'not_found' };
+    await st.setJSON(SALES_KEY, next);
+    return { ok: true };
+  } catch (e) {
+    if (!LAST_ERROR) LAST_ERROR = (e && e.message) || String(e);
+    return { ok: false, reason: 'storage' };
   }
 }
 
@@ -138,7 +153,8 @@ async function salesSummary() {
       perItem[it.id].revenue += line;
     }
   }
-  const recent = list.slice(-15).reverse().map(s => ({
+  const recent = list.slice(-25).reverse().map(s => ({
+    sid: s.sid, manual: !!s.manual,
     orderId: s.orderId, at: s.at, total: s.total,
     delivery: s.delivery, customer: s.customer,
     items: (s.items || []).map(i => `${i.name} × ${i.qty}`).join(', '),
@@ -147,4 +163,4 @@ async function salesSummary() {
 }
 
 module.exports = { catalog, levels, save, reserve, release, lastError,
-                   sales, recordSale, salesSummary };
+                   sales, recordSale, deleteSale, salesSummary };
