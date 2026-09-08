@@ -2820,6 +2820,7 @@
   /* ── מודאל ההזמנה ── */
   function openOrder(refreshOnly) {
     if (!cart.length) { toast('הסל שלך ריק'); return; }
+    if (!refreshOnly) syncDelivery();      /* מיישר את השדות למצב הנוכחי לפני החישוב */
 
     const lines = cartLines();
     const sub   = cartSubtotal();
@@ -2857,6 +2858,7 @@
     row.style.display = pickup ? 'none' : '';
     row.querySelectorAll('input').forEach(i => { i.required = !pickup; });
     sel.required = pickup;
+    sel.disabled = !pickup;      /* שדה מנוטרל לא נשלח — כך "נקודת איסוף" לא מופיעה בהזמנת משלוח */
     const note = $('#delivShipNote');
     if (note) note.textContent = `${money(SHIPPING_FEE)} · חינם מעל ${money(FREE_OVER)}`;
     if ($('#orderModal').classList.contains('open')) openOrder(true);
