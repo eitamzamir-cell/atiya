@@ -12,7 +12,7 @@
  * והאתר ממשיך לעבוד בדיוק כמו היום — הזמנה במייל וקישור תשלום ידני.
  */
 const HYP_ENDPOINT = 'https://pay.hyp.co.il/p/';
-const { catalog, reserve, release } = require('./_stock');
+const { catalog, reserve, release, recordSale } = require('./_stock');
 
 const json = (code, body) => ({
   statusCode: code,
@@ -52,6 +52,8 @@ exports.handler = async (event) => {
   const SHIPPING_FEE = 30;
   const FREE_OVER    = 300;
   const pickup   = order.delivery === 'pickup';          // איסוף עצמי — בלי דמי משלוח
+  const POINTS   = ['סנסנה', 'תקוע'];                    // רשימה סגורה — לא סומכים על הדפדפן
+  const point    = pickup && POINTS.indexOf(order.pickupPoint) > -1 ? order.pickupPoint : '';
   const shipping = pickup ? 0 : (subtotal >= FREE_OVER ? 0 : SHIPPING_FEE);
   const amount   = subtotal + shipping;
   if (amount <= 0 || amount > 100000) return json(400, { error: 'invalid amount' });
@@ -77,7 +79,7 @@ exports.handler = async (event) => {
     PassP:       HYP_PASSP,
     Amount:      amount.toFixed(2),
     Coin:        '1',                    // 1 = ILS
-    Info:        ((pickup ? '[איסוף עצמי] ' : '') + (order.info || 'הזמנה מאתר עטיה')).slice(0, 80),
+    Info:        ((pickup ? '[איסוף ' + (point || '?') + '] ' : '') + (order.info || 'הזמנה מאתר עטיה')).slice(0, 80),
     Order:       (order.orderId || '').slice(0, 40),
     ClientName:  (order.firstName || '').slice(0, 40),
     ClientLName: (order.lastName || '').slice(0, 40),
@@ -117,6 +119,17 @@ exports.handler = async (event) => {
     // התשובה החתומה מוחזרת כמחרוזת query — מצרפים אותה לכתובת דף התשלום
     const signed = text.replace(/^[?&]/, '');
     const payUrl = `${HYP_ENDPOINT}?${signed.replace(/action=APISign/, 'action=pay')}`;
+
+    /* נרשם ברגע המעבר לתשלום — ראה ההערה ב-_stock.js */
+    await recordSale({
+      orderId:  order.orderId || '',
+      at:       new Date().toISOString(),
+      items:    clean.map(c => ({ id: c.id, name: catalog[c.id].name,
+                                  qty: c.qty, price: catalog[c.id].price })),
+      subtotal, shipping, total: amount,
+      delivery: pickup ? ('איסוף עצמי · ' + (point || 'לא צוין')) : 'משלוח',
+      customer: [order.firstName, order.lastName].filter(Boolean).join(' ').slice(0, 40),
+    });
 
     return json(200, { configured: true, url: payUrl, amount, subtotal, shipping });
   } catch (e) {

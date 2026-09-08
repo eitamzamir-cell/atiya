@@ -89,4 +89,62 @@ async function release(items) {
   return map;
 }
 
-module.exports = { catalog, levels, save, reserve, release, lastError };
+
+/* ── מכירות ─────────────────────────────────────────────────────────────
+   נרשמות ברגע המעבר לתשלום. זה לא "כסף שהתקבל" — עסקה שננטשה בדף האשראי
+   תיספר גם היא. מקור האמת לכסף הוא הפאנל של Hyp.
+   ──────────────────────────────────────────────────────────────────────── */
+const SALES_KEY = 'sales';
+const SALES_CAP = 800;
+
+async function sales() {
+  try {
+    const st = await store();
+    const raw = await st.get(SALES_KEY, { type: 'json' });
+    return Array.isArray(raw) ? raw : [];
+  } catch (e) {
+    if (!LAST_ERROR) LAST_ERROR = (e && e.message) || String(e);
+    return [];
+  }
+}
+
+async function recordSale(sale) {
+  try {
+    const st = await store();
+    const list = await sales();
+    list.push(sale);
+    await st.setJSON(SALES_KEY, list.slice(-SALES_CAP));
+    return true;
+  } catch (e) {
+    if (!LAST_ERROR) LAST_ERROR = (e && e.message) || String(e);
+    return false;
+  }
+}
+
+/** סיכום: כמה יחידות והכנסה, בסך הכול ולפי פריט */
+async function salesSummary() {
+  const list = await sales();
+  const perItem = {};
+  let units = 0, revenue = 0, shipping = 0;
+  for (const s of list) {
+    revenue  += Number(s.total) || 0;
+    shipping += Number(s.shipping) || 0;
+    for (const it of (s.items || [])) {
+      const q = Number(it.qty) || 0;
+      const line = (Number(it.price) || 0) * q;
+      units += q;
+      if (!perItem[it.id]) perItem[it.id] = { qty: 0, revenue: 0 };
+      perItem[it.id].qty += q;
+      perItem[it.id].revenue += line;
+    }
+  }
+  const recent = list.slice(-15).reverse().map(s => ({
+    orderId: s.orderId, at: s.at, total: s.total,
+    delivery: s.delivery, customer: s.customer,
+    items: (s.items || []).map(i => `${i.name} × ${i.qty}`).join(', '),
+  }));
+  return { orders: list.length, units, revenue, shipping, perItem, recent };
+}
+
+module.exports = { catalog, levels, save, reserve, release, lastError,
+                   sales, recordSale, salesSummary };

@@ -7,7 +7,7 @@
  * הסיסמה נשמרת במשתנה סביבה ATYA_ADMIN_KEY בנטליפיי.
  * בלי משתנה כזה — הפונקציה מסרבת לכל בקשה (fail closed).
  */
-const { catalog, levels, save, lastError } = require('./_stock');
+const { catalog, levels, save, lastError, salesSummary } = require('./_stock');
 
 const json = (code, body) => ({
   statusCode: code,
@@ -36,10 +36,17 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === 'GET') {
     const map = await levels();
+    const sum = await salesSummary();
     return json(200, {
       products: Object.entries(catalog).map(([id, p]) => ({
         id, name: p.name, cat: p.cat, price: p.price, stock: map[id] ?? p.stock,
+        sold: (sum.perItem[id] || {}).qty || 0,
+        soldValue: (sum.perItem[id] || {}).revenue || 0,
       })),
+      sales: {
+        orders: sum.orders, units: sum.units,
+        revenue: sum.revenue, shipping: sum.shipping, recent: sum.recent,
+      },
     });
   }
 

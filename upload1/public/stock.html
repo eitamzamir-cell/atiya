@@ -64,17 +64,26 @@
   .low{background:rgba(168,68,46,.13);color:var(--alert)}
   .out{background:var(--alert);color:#fff}
 
+  .shead{font-size:1.35rem;font-weight:400;margin:2.2rem 0 .3rem}
+  .note{font-size:.86rem;color:var(--dim);margin-bottom:1rem;line-height:1.6}
+  #recentTbl td{font-size:.9rem}
+  .sold{color:var(--forest)}
   .bar{
-    position:sticky;bottom:0;margin-top:1.2rem;padding:.9rem 1rem;
+    margin-top:1.2rem;padding:.9rem 1rem;
     background:var(--paper);border:1px solid var(--line);border-radius:3px;
     display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
-    box-shadow:0 -6px 18px rgba(58,44,27,.10);
+  }
+  .bar.active{
+    position:sticky;bottom:.6rem;z-index:5;
+    border-color:var(--forest);
+    box-shadow:0 -6px 22px rgba(58,44,27,.16);
   }
   .msg{font-size:.9rem;color:var(--dim)}
   .msg.ok{color:var(--forest)} .msg.err{color:var(--alert)}
   .hide{display:none!important}
   @media(max-width:620px){
-    th:nth-child(3),td:nth-child(3),th:nth-child(5),td:nth-child(5){display:none}
+    th:nth-child(5),td:nth-child(5),th:nth-child(7),td:nth-child(7){display:none}
+    #recentTbl th:nth-child(2),#recentTbl td:nth-child(2),#recentTbl th:nth-child(4),#recentTbl td:nth-child(4){display:none}
     body{padding:1rem .6rem 4rem} h1{font-size:1.5rem}
   }
 </style>
@@ -100,10 +109,20 @@
 
   <table>
     <thead>
-      <tr><th>פריט</th><th>מלאי</th><th>מחיר</th><th>סטטוס</th><th>שווי</th></tr>
+      <tr><th>פריט</th><th>מלאי</th><th>נמכר</th><th>הכנסה</th><th>מחיר</th><th>סטטוס</th><th>שווי מלאי</th></tr>
     </thead>
     <tbody id="rows"></tbody>
   </table>
+
+  <div id="salesBox" class="hide">
+    <h2 class="shead">מכירות</h2>
+    <p class="note" id="salesNote"></p>
+    <div class="cards" id="salesStats"></div>
+    <table id="recentTbl">
+      <thead><tr><th>הזמנה</th><th>מתי</th><th>לקוחה</th><th>פריטים</th><th>מסירה</th><th>סכום</th></tr></thead>
+      <tbody id="recent"></tbody>
+    </table>
+  </div>
 
   <div class="bar">
     <span class="msg" id="msg">אפשר לערוך את המספרים ואז לשמור.</span>
@@ -118,7 +137,7 @@
 (function(){
   var API = '/.netlify/functions/stock-admin';
   var $ = function(s){ return document.querySelector(s); };
-  var KEY = '', DATA = [], ORIG = {};
+  var KEY = '', DATA = [], ORIG = {}, SALES = null;
 
   function money(n){ return n.toLocaleString('he-IL') + ' ₪'; }
   function stash(k){ try{ sessionStorage.setItem('atya-key', k); }catch(e){} }
@@ -137,7 +156,7 @@
       if (!d.products) { $('#gateMsg').textContent = 'שגיאה בטעינה'; $('#gateMsg').classList.remove('hide'); return; }
       KEY = k; stash(k);
       $('#gate').classList.add('hide'); $('#app').classList.remove('hide');
-      render(d.products);
+      SALES = d.sales; render(d.products); renderSales();
     }).catch(function(){
       $('#gateMsg').textContent = 'אין חיבור לשרת'; $('#gateMsg').classList.remove('hide');
     });
@@ -152,7 +171,7 @@
     groups.forEach(function(g){
       var items = list.filter(function(p){ return p.cat === g[0]; });
       if (!items.length) return;
-      html += '<tr class="grp"><td colspan="5">' + g[1] + '</td></tr>';
+      html += '<tr class="grp"><td colspan="7">' + g[1] + '</td></tr>';
       items.forEach(function(p){
         html += '<tr data-id="' + p.id + '">' +
           '<td class="name">' + p.name + '</td>' +
@@ -161,6 +180,8 @@
             '<input class="qty" type="number" min="0" max="9999" value="' + p.stock + '">' +
             '<button class="step" data-d="1">+</button>' +
           '</span></td>' +
+          '<td class="num sold">' + (p.sold ? p.sold : '—') + '</td>' +
+          '<td class="num sold">' + (p.soldValue ? money(p.soldValue) : '—') + '</td>' +
           '<td class="num">' + (p.price == null ? '—' : money(p.price)) + '</td>' +
           '<td class="status"></td>' +
           '<td class="num value"></td>' +
@@ -201,9 +222,33 @@
       stat('מלאי נמוך', low) +
       stat('אזלו', out);
     $('#save').disabled = dirty === 0;
+    document.querySelector('.bar').classList.toggle('active', dirty > 0);
     $('#msg').className = 'msg';
     $('#msg').textContent = dirty ? dirty + ' פריטים שונו — לא נשמר עדיין' : 'אפשר לערוך את המספרים ואז לשמור.';
   }
+  function renderSales(){
+    var box = $('#salesBox');
+    if (!SALES) { box.classList.add('hide'); return; }
+    box.classList.remove('hide');
+    var s = SALES;
+    $('#salesStats').innerHTML =
+      stat('הזמנות', s.orders.toLocaleString('he-IL')) +
+      stat('יחידות שנמכרו', s.units.toLocaleString('he-IL')) +
+      stat('סה"כ נגבה', money(s.revenue)) +
+      stat('מזה משלוחים', money(s.shipping));
+    $('#salesNote').textContent = s.orders
+      ? 'נספר מרגע המעבר לתשלום. הזמנה שננטשה בדף האשראי נספרת גם היא — הסכום המחייב הוא זה שבפאנל של Hyp.'
+      : 'עדיין אין מכירות מתועדות. הספירה מתחילה מההזמנה הבאה.';
+    $('#recent').innerHTML = (s.recent || []).length
+      ? s.recent.map(function(r){
+          var d = r.at ? new Date(r.at).toLocaleString('he-IL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+          return '<tr><td>' + (r.orderId||'—') + '</td><td>' + d + '</td><td>' + (r.customer||'—') +
+                 '</td><td>' + (r.items||'—') + '</td><td>' + (r.delivery||'—') +
+                 '</td><td class="num">' + money(r.total||0) + '</td></tr>';
+        }).join('')
+      : '<tr><td colspan="6" style="color:var(--dim)">אין עדיין הזמנות</td></tr>';
+  }
+
   function stat(k,v){ return '<div class="stat"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
 
   document.addEventListener('input', function(e){ if (e.target.classList.contains('qty')) refresh(); });
@@ -215,7 +260,7 @@
       refresh(); return;
     }
     if (e.target.id === 'enter'){ enter($('#key').value.trim()); return; }
-    if (e.target.id === 'reload'){ load(KEY).then(function(d){ if (d.products) render(d.products); }); return; }
+    if (e.target.id === 'reload'){ load(KEY).then(function(d){ if (d.products) { SALES = d.sales; render(d.products); renderSales(); } }); return; }
     if (e.target.id === 'undo'){ render(DATA.map(function(p){ return Object.assign({}, p, {stock: ORIG[p.id]}); })); return; }
     if (e.target.id === 'save'){
       var payload = {};

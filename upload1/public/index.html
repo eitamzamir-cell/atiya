@@ -2909,6 +2909,7 @@
             body: JSON.stringify({
               items: cartForServer, orderId, info: items.replace(/\n/g, ' | ').slice(0, 80),
               delivery: isPickup() ? 'pickup' : 'ship',
+              pickupPoint: isPickup() ? $('#pickupPoint').value : '',
               firstName: nameParts[0] || '', lastName: nameParts.slice(1).join(' '),
               email: data.email, phone: data.phone, city: data.city, address: data.address
             })
