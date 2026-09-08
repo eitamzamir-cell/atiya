@@ -51,7 +51,8 @@ exports.handler = async (event) => {
   // ── משלוח: אותם כללים כמו בעמוד
   const SHIPPING_FEE = 30;
   const FREE_OVER    = 300;
-  const shipping = subtotal >= FREE_OVER ? 0 : SHIPPING_FEE;
+  const pickup   = order.delivery === 'pickup';          // איסוף עצמי — בלי דמי משלוח
+  const shipping = pickup ? 0 : (subtotal >= FREE_OVER ? 0 : SHIPPING_FEE);
   const amount   = subtotal + shipping;
   if (amount <= 0 || amount > 100000) return json(400, { error: 'invalid amount' });
 
@@ -76,7 +77,7 @@ exports.handler = async (event) => {
     PassP:       HYP_PASSP,
     Amount:      amount.toFixed(2),
     Coin:        '1',                    // 1 = ILS
-    Info:        (order.info || 'הזמנה מאתר עטיה').slice(0, 80),
+    Info:        ((pickup ? '[איסוף עצמי] ' : '') + (order.info || 'הזמנה מאתר עטיה')).slice(0, 80),
     Order:       (order.orderId || '').slice(0, 40),
     ClientName:  (order.firstName || '').slice(0, 40),
     ClientLName: (order.lastName || '').slice(0, 40),
